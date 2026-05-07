@@ -1,0 +1,667 @@
+% =============================================================================
+% capacity_measures.tex — Hospital Capacity Indicators: Methodology Reference
+%
+% Audience: seminar / external collaborators
+% Compile:  cd Slides && TEXINPUTS=../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode capacity_measures.tex
+% =============================================================================
+
+\documentclass[aspectratio=169]{beamer}
+\input{header}
+
+\usepackage{colortbl}
+
+\title{Hospital Capacity Indicators}
+\subtitle{Measurement Framework for Fondecyt 2025}
+\author{Nicol\'as Libuy}
+\institute{Universidad Adolfo Ib\'a\~nez}
+\date{May 2026}
+
+% =============================================================================
+\begin{document}
+% =============================================================================
+
+% ── Title ────────────────────────────────────────────────────────────────────
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% ── Motivation ───────────────────────────────────────────────────────────────
+\begin{frame}{Motivation}
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      \textbf{Research context}
+      \begin{itemize}\scriptsize\setlength{\itemsep}{2pt}
+        \item Fondecyt 2025 studies how severe chronic conditions (cancer, diabetes)
+              affect educational and labor outcomes in Chile.
+        \item Central challenge: healthcare access is endogenous to socioeconomic status
+              --- patients who seek care are a selected group.
+        \item Solution: exploit \emph{ex-ante} variation in hospital capacity
+              \emph{before} patients are diagnosed.
+      \end{itemize}
+      \smallskip
+      \textbf{Role of capacity indicators $z_i$}
+      \begin{itemize}\scriptsize\setlength{\itemsep}{2pt}
+        \item Each indicator measures the pre-diagnosis capacity environment at the
+              patient's hospital.
+        \item Used as a moderator in a Dynamic DiD design: high congestion $\Rightarrow$
+              longer waits and deferred treatment $\Rightarrow$ worse outcomes.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.41\textwidth}
+      \begin{keybox}
+        \scriptsize
+        \key{Design logic:} Patients assigned to chronically saturated hospitals
+        \emph{before} diagnosis face worse access regardless of their own
+        characteristics. This pre-determined variation identifies treatment
+        quality effects in the DiD framework.
+      \end{keybox}
+      \smallskip
+      \begin{block}{References}
+        \scriptsize
+        Guidetti (2024) --- occupancy pressure \\
+        Chan et al.\ (2023) --- quality benchmarks \\
+        Otero (2024) --- Chilean hospitals
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── Data scope ───────────────────────────────────────────────────────────────
+\begin{frame}{Data: MINSAL Monthly Hospital Statistics, 2014--2025}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \textbf{Sources (3 datasets)}
+      \begin{itemize}\scriptsize\setlength{\itemsep}{2pt}
+        \item \emph{Monthly statistics} (MINSAL/DEIS 2014--2025): activity records
+              per hospital $\times$ service $\times$ month.
+        \item \emph{Annual bed roster / dotaci\'on} (SNSS 2010--2025):
+              installed beds by hospital and functional area.
+        \item \emph{Hospital registry} (DEIS 2024): location, region, complexity.
+      \end{itemize}
+      \smallskip
+      \begin{center}\scriptsize
+        \begin{tabular}{ll}
+          \toprule
+          Hospitals   & 205 SNSS public facilities \\
+          Period      & Jan 2014 -- Nov 2025 (141 months) \\
+          Services    & Codes 401--412 \\
+          Group-panel & 62{,}958 hosp $\times$ group $\times$ month \\
+          \bottomrule
+        \end{tabular}
+      \end{center}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \textbf{Service group definitions}
+      \begin{center}\scriptsize
+        \begin{tabular}{lll}
+          \toprule
+          Group & Codes & Description \\
+          \midrule
+          g1 & 401--406 & General / cancer-relevant \\
+          g2 & 405--406 & High complexity (ICU) \\
+          g3 & 401--412 & Broad clinical \\
+          \bottomrule
+        \end{tabular}
+      \end{center}
+      \smallskip
+      \textbf{Join coverage}
+      \begin{itemize}\scriptsize\setlength{\itemsep}{2pt}
+        \item Dotaci\'on (capacity) matched: 95.8\,\%
+        \item DEIS commune matched: 99.9\,\%
+        \item Missing dotaci\'on coded \texttt{NA} --- affects capacity-normalised indicators only
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── Indicator overview ────────────────────────────────────────────────────────
+\begin{frame}{Five Indicator Families}
+  \begin{center}\small
+    \begin{tabular}{clll}
+      \toprule
+      \# & Family & Variables \\
+      \midrule
+      1 & Capacity structure
+        & \texttt{brecha\_cap},\ \texttt{bce} \\[2pt]
+      2 & Occupancy \& pressure
+        & \texttt{occ},\ \texttt{occ\_sat85/90/95},\ \texttt{z\_occ},\
+          \texttt{sp\_3m},\ \texttt{sp\_6m} \\[2pt]
+      3 & Flow \& turnover
+        & \texttt{los},\ \texttt{rot},\ \texttt{egr\_x\_cama} \\[2pt]
+      4 & Operational rigidity
+        & \texttt{rigidez} \\[2pt]
+      5 & Intensity over capacity
+        & \texttt{ici} \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+  \smallskip
+  \begin{keybox}
+    \scriptsize
+    All indicators computed at \key{Level 1} (hospital $\times$ service $\times$ month)
+    and \key{Level 2} (hospital $\times$ group $\times$ month).
+    Level 2 aggregates raw components by SUM, then re-derives indicators.
+    Both levels exported as \texttt{.rds} + \texttt{.csv} for Stata/external linkage.
+  \end{keybox}
+\end{frame}
+
+% =============================================================================
+\transitionslide{1.\ Capacity Structure}
+% =============================================================================
+
+% ── brecha_cap ────────────────────────────────────────────────────────────────
+\begin{frame}[shrink=7]{\texttt{brecha\_cap} --- Absolute Capacity Gap}
+  \begin{columns}[T]
+    \begin{column}{0.45\textwidth}
+      \begin{definitionbox}{Definition}
+        \[
+          \text{BrechaCap}_{h,s,t}
+            = D^{\text{dot}}_{h,s,a(t)} - \overline{D}_{h,s,t}
+        \]
+        $D^{\text{dot}}$ = installed beds (annual roster); \quad
+        $\overline{D}$ = operational beds (monthly).
+      \end{definitionbox}
+      \smallskip
+      \begin{itemize}\scriptsize\setlength{\itemsep}{3pt}
+        \item \textbf{Positive:} installed capacity exceeds operations (budget,
+              staffing, or maintenance constraints keep beds closed).
+        \item \textbf{Negative:} temporary surge beyond the formal roster.
+        \item \textbf{Units:} beds (absolute); not size-normalised ---
+              use \texttt{bce} for cross-hospital comparisons.
+        \item \textbf{Validation:} $\overline{D}$ correlates $r\approx 0.97$ with
+              annual dotaci\'on --- they track closely but diverge in crises.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.51\textwidth}
+      \includegraphics[width=\linewidth]{../scripts/R/_outputs/fig_brecha_cap_trends.pdf}
+      {\scriptsize\color{neutral}
+        Group 1 monthly average, 2014--2025.
+        Positive = installed $>$ operational. Dashed = zero gap.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── bce ──────────────────────────────────────────────────────────────────────
+\begin{frame}[shrink=5]{\texttt{bce} --- Relative Capacity Gap}
+  \begin{columns}[T]
+    \begin{column}{0.45\textwidth}
+      \begin{definitionbox}{Definition}
+        \[
+          \text{BCE}_{h,s,t}
+            = \frac{D^{\text{dot}}_{h,s,a(t)} - \overline{D}_{h,s,t}}
+                   {D^{\text{dot}}_{h,s,a(t)}}
+        \]
+      \end{definitionbox}
+      \smallskip
+      \begin{itemize}\scriptsize\setlength{\itemsep}{3pt}
+        \item \textbf{Interpretation:} fraction of installed beds that are
+              inactive --- size-normalised for cross-hospital comparisons.
+        \item \textbf{BCE $= 0.20$:} 20\,\% of installed beds not operational;
+              near zero = running at full installed capacity.
+        \item \textbf{Negative:} temporary expansion above the formal roster.
+        \item \key{DiD role:} \normalfont size-normalised structural
+              inefficiency; valid cross-hospital moderator $z_i$.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.51\textwidth}
+      \includegraphics[width=\linewidth]{../scripts/R/_outputs/fig_bce_dist.pdf}
+      {\scriptsize\color{neutral}
+        Distribution of BCE by period. Most hospitals near zero;
+        right tail = significant inactive installed capacity.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% =============================================================================
+\transitionslide{2.\ Occupancy \& Pressure}
+% =============================================================================
+
+% ── occ ──────────────────────────────────────────────────────────────────────
+\begin{frame}[shrink=10]{\texttt{occ} --- Occupancy Rate}
+  \begin{columns}[T]
+    \begin{column}{0.45\textwidth}
+      \begin{definitionbox}{Definition}
+        \[
+          \text{Occ}_{h,s,t}
+            = \frac{\text{D\'ias Cama Ocupados}_{h,s,t}}
+                   {\text{D\'ias Cama Disponibles}_{h,s,t}}
+        \]
+      \end{definitionbox}
+      \smallskip
+      \begin{itemize}\scriptsize\setlength{\itemsep}{3pt}
+        \item \textbf{Primary pressure measure:} fraction of operational
+              bed-days occupied in month $t$.
+        \item \textbf{High ($>$85\,\%):} limited buffer --- new admissions
+              must displace or defer other patients.
+        \item \textbf{Range:} 0.60--0.90 typical; NA when $\overline{D}\le 0$;
+              0.11\,\% obs $>1$ from MINSAL rounding.
+        \item \key{Primary moderator $z_i$:} \normalfont pre-diagnosis
+              occupancy rate is the main candidate in the DiD specification.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.51\textwidth}
+      \includegraphics[width=\linewidth]{../scripts/R/_outputs/fig_occ_trends.pdf}
+      {\scriptsize\color{neutral}
+        National average by group, 2014--2025.
+        Dashed = 85\,\%. Dotted = 90\,\%.
+        COVID drop reflects deferred elective care.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── occ_sat ──────────────────────────────────────────────────────────────────
+\begin{frame}{\texttt{occ\_sat85/90/95} --- Binary Saturation Thresholds}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{definitionbox}{Definition}
+        \[
+          \text{OccSat}^\tau_{h,s,t}
+            = \mathbf{1}[\text{Occ}_{h,s,t} > \tau]
+        \]
+        \centering\scriptsize$\tau \in \{0.85,\,0.90,\,0.95\}$
+      \end{definitionbox}
+      \smallskip
+      \begin{itemize}\scriptsize\setlength{\itemsep}{3pt}
+        \item \textbf{Why three thresholds:}
+              85\,\% = WHO quality advisory;
+              90\,\% = operational saturation (Guidetti 2024);
+              95\,\% = near-total congestion.
+        \item \textbf{Non-linearity:} captures step-changes in adverse
+              outcomes that continuous \texttt{occ} may understate.
+        \item \textbf{Input to rolling windows:} \texttt{sp\_3m}/\texttt{sp\_6m}
+              are rolling means of \texttt{occ\_sat90}.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \textbf{\small\% hospital-months above threshold (Group 1)}
+      \smallskip
+      \begin{center}\scriptsize
+        \begin{tabular}{lccc}
+          \toprule
+          Period & $>$85\,\% & $>$90\,\% & $>$95\,\% \\
+          \midrule
+          Pre-COVID (14--19) & 35.2 & 22.8 & 9.2 \\
+          COVID (20--22)     & 24.8 & 12.8 & 4.3 \\
+          Post-COVID (23--25)& 45.4 & 27.8 & 9.8 \\
+          \bottomrule
+        \end{tabular}
+      \end{center}
+      \smallskip
+      \begin{keybox}
+        \scriptsize
+        Post-COVID saturation \emph{exceeds} pre-COVID: pent-up demand +
+        persistent workforce gaps keep beds below pre-pandemic roster.
+        COVID period shows lower rates --- elective care was deferred.
+      \end{keybox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── z_occ ────────────────────────────────────────────────────────────────────
+\begin{frame}{\texttt{z\_occ} --- Standardised Occupancy}
+  \begin{columns}[T]
+    \begin{column}{0.45\textwidth}
+      \begin{definitionbox}{Definition}
+        \[
+          z\text{Occ}_{h,s,t}
+            = \frac{\text{Occ}_{h,s,t}
+                    - \mu^{\text{base}}_{h,s,m(t)}}
+                   {\sigma^{\text{base}}_{h,s,m(t)}}
+        \]
+        $\mu^{\text{base}}, \sigma^{\text{base}}$: mean and SD of \texttt{occ}
+        for the same hospital--service--\emph{calendar month}
+        over 2014--2019.
+      \end{definitionbox}
+      \smallskip
+      \begin{itemize}\scriptsize\setlength{\itemsep}{3pt}
+        \item \textbf{Controls for:} hospital fixed effects and seasonal
+              occupancy patterns simultaneously.
+        \item \textbf{High positive:} unusually congested relative to its
+              own pre-COVID historical norm.
+        \item \textbf{NA} for cells with $\sigma^{\text{base}}=0$;
+              empirical distribution $\approx N(0,\,0.91)$ in 2014--2019.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.51\textwidth}
+      \includegraphics[width=\linewidth]{../scripts/R/_outputs/fig_z_occ_dist.pdf}
+      {\scriptsize\color{neutral}
+        COVID: below-norm (left shift).
+        Post-COVID: above-historical norms (right shift).}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── sp_6m ─────────────────────────────────────────────────────────────────────
+\begin{frame}[shrink=10]{\texttt{sp\_3m} / \texttt{sp\_6m} --- Persistent Saturation}
+  \begin{columns}[T]
+    \begin{column}{0.45\textwidth}
+      \begin{definitionbox}{Definition ($k \in \{3,6\}$)}
+        \[
+          \text{Sat}k\text{m}_{h,s,t}
+            = \frac{1}{k}\sum_{j=0}^{k-1}
+              \mathbf{1}[\text{Occ}_{h,s,t-j} > 0.90]
+        \]
+        \centering\scriptsize Trailing window; \texttt{slider::slide\_dbl}.
+      \end{definitionbox}
+      \smallskip
+      \begin{itemize}\scriptsize\setlength{\itemsep}{3pt}
+        \item \textbf{Chronic vs.\ transient:} fraction of the prior $k$ months
+              above 90\,\% --- distinguishes persistent crises from spikes.
+        \item \textbf{Sat6m $=1$:} above 90\,\% every month for 6 months.
+        \item \textbf{Range:} [0,\,1]; mean $\approx 0.23$ for Group 1 pre-COVID.
+        \item \key{Primary moderator:} \normalfont \texttt{sp\_6m} is the best
+              single proxy for chronic access barriers pre-diagnosis.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.51\textwidth}
+      \includegraphics[width=\linewidth]{../scripts/R/_outputs/fig_sp6m_dist.pdf}
+      {\scriptsize\color{neutral}
+        Distribution of \texttt{sp\_6m} by group. Right-skewed: most
+        hospitals are rarely saturated; a tail is chronically above 90\,\%.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── Occupancy summary ─────────────────────────────────────────────────────────
+\begin{frame}{Summary: Occupancy \& Pressure (Group 1)}
+  \begin{center}\scriptsize
+    \begin{tabular}{lcccccc}
+      \toprule
+      & \multicolumn{2}{c}{Pre-COVID (14--19)}
+      & \multicolumn{2}{c}{COVID (20--22)}
+      & \multicolumn{2}{c}{Post-COVID (23--25)} \\
+      \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+      Indicator & Mean & SD & Mean & SD & Mean & SD \\
+      \midrule
+      \texttt{occ}     & 0.740 & 0.162 & 0.609 & 0.190 & 0.793 & 0.164 \\
+      \texttt{sp\_6m}  & 0.225 & 0.319 & 0.122 & 0.273 & 0.290 & 0.353 \\
+      \texttt{z\_occ}  & 0.000 & 0.912 & \muted{n/a} & \muted{n/a}
+                        & \muted{n/a} & \muted{n/a} \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+  \smallskip
+  \begin{keybox}
+    \scriptsize
+    \key{COVID pattern:} mean occ fell from 0.74 to 0.61 as elective
+    procedures were cancelled and infection-control reduced operational beds.
+    \key{Post-COVID rebound:} mean occ (0.79) \emph{exceeds} pre-COVID,
+    driven by pent-up demand and persistent workforce shortages.
+  \end{keybox}
+\end{frame}
+
+% =============================================================================
+\transitionslide{3.\ Flow \& Turnover}
+% =============================================================================
+
+% ── los ──────────────────────────────────────────────────────────────────────
+\begin{frame}{\texttt{los} --- Length of Stay}
+  \begin{columns}[T]
+    \begin{column}{0.45\textwidth}
+      \begin{definitionbox}{Definition}
+        \[
+          \text{LOS}_{h,s,t}
+            = \frac{\text{D\'ias de Estada}_{h,s,t}}
+                   {\text{Egresos}_{h,s,t}}
+        \]
+      \end{definitionbox}
+      \smallskip
+      \begin{itemize}\scriptsize\setlength{\itemsep}{3pt}
+        \item \textbf{What it captures:} average inpatient days per discharge
+              --- determines how quickly beds become available.
+        \item \textbf{High value:} slow bed turnover; delayed discharge from
+              patient complexity or lack of outpatient follow-up capacity.
+        \item \textbf{Cancer relevance:} long stays in upstream services
+              (surgery, general medicine) delay referrals to oncology.
+        \item \textbf{NA} when egresos $\le 0$; typical range 5--15 days
+              (codes 401--406).
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.51\textwidth}
+      \includegraphics[width=\linewidth]{../scripts/R/_outputs/fig_los_trends.pdf}
+      {\scriptsize\color{neutral}
+        COVID spike: selective admission of more severe cases.
+        Post-COVID partial convergence toward pre-pandemic norms.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── rot ──────────────────────────────────────────────────────────────────────
+\begin{frame}{\texttt{rot} --- Bed Rotation Index}
+  \begin{columns}[T]
+    \begin{column}{0.45\textwidth}
+      \begin{definitionbox}{Definition}
+        \[
+          \text{Rot}_{h,s,t}
+            = \frac{\text{Egresos}_{h,s,t}}
+                   {\overline{D}_{h,s,t}}
+        \]
+      \end{definitionbox}
+      \smallskip
+      \begin{itemize}\scriptsize\setlength{\itemsep}{3pt}
+        \item \textbf{What it captures:} patients cycling through each
+              \emph{operational} bed per month --- throughput rate.
+        \item \textbf{Approximate identity:}
+              $\text{Rot} \approx \text{Occ} \times D_m / \text{LOS}$,
+              where $D_m$ = days in month.
+        \item \textbf{High value:} rapid turnover; many patients per bed.
+        \item \textbf{NA} when $\overline{D}\le 0$; typical range 1--5
+              discharges/bed/month.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.51\textwidth}
+      \includegraphics[width=\linewidth]{../scripts/R/_outputs/fig_rot_trends.pdf}
+      {\scriptsize\color{neutral}
+        COVID collapse: lower admissions + fewer discharges (longer stays).
+        Post-COVID partial recovery.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── egr_x_cama ────────────────────────────────────────────────────────────────
+\begin{frame}{\texttt{egr\_x\_cama} --- Throughput per Installed Bed}
+  \begin{columns}[T]
+    \begin{column}{0.45\textwidth}
+      \begin{definitionbox}{Definition}
+        \[
+          \text{EgrXCama}_{h,s,t}
+            = \frac{\text{Egresos}_{h,s,t}}
+                   {D^{\text{dot}}_{h,s,a(t)}}
+        \]
+      \end{definitionbox}
+      \smallskip
+      \begin{itemize}\scriptsize\setlength{\itemsep}{3pt}
+        \item \textbf{vs.\ \texttt{rot}:} rotation uses operational beds
+              ($\overline{D}$); this uses installed beds ($D^{\text{dot}}$).
+              The gap reflects inactive installed capacity.
+        \item \textbf{High value:} high monthly throughput per formally
+              allocated structural bed.
+        \item \textbf{NA} when $D^{\text{dot}}\le 0$ (2.5\,\% of obs.);
+              typical range 2--5 monthly discharges/installed bed.
+        \item \textbf{Structural productivity:} less sensitive to short-term
+              operational decisions than rotation.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.51\textwidth}
+      \includegraphics[width=\linewidth]{../scripts/R/_outputs/fig_egr_x_cama_trends.pdf}
+      {\scriptsize\color{neutral}
+        COVID drop: reduced admissions. Partial recovery post-2022.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── Flow summary ──────────────────────────────────────────────────────────────
+\begin{frame}{Summary: Flow \& Turnover (Group 1)}
+  \begin{center}\scriptsize
+    \begin{tabular}{lcccccc}
+      \toprule
+      & \multicolumn{2}{c}{Pre-COVID (14--19)}
+      & \multicolumn{2}{c}{COVID (20--22)}
+      & \multicolumn{2}{c}{Post-COVID (23--25)} \\
+      \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+      Indicator & Mean & SD & Mean & SD & Mean & SD \\
+      \midrule
+      \texttt{los}          & 7.21 & 4.76 & 9.66 & 6.10 & 7.72 & 4.46 \\
+      \texttt{rot}          & 3.45 & 1.96 & 2.10 & 1.57 & 3.60 & 1.90 \\
+      \texttt{egr\_x\_cama} & 3.52 & 4.42 & 2.65 & 1.31 & 2.90 & 1.30 \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+  \smallskip
+  \begin{keybox}
+    \scriptsize
+    \key{COVID patterns:} LOS rose sharply as elective admissions declined
+    and more severe cases dominated. Rotation and throughput fell correspondingly.
+    All three indicators partially recover post-2022 but remain below pre-pandemic
+    levels --- reflecting persistent workforce shortages.
+  \end{keybox}
+\end{frame}
+
+% =============================================================================
+\transitionslide{4.\ Operational Rigidity}
+% =============================================================================
+
+% ── rigidez ──────────────────────────────────────────────────────────────────
+\begin{frame}[shrink=12]{\texttt{rigidez} --- Operational Rigidity Index}
+  \begin{columns}[T]
+    \begin{column}{0.45\textwidth}
+      \begin{definitionbox}{Definition}
+        \[
+          \text{Rigidez}_{h,s,t}
+            = \text{Occ}_{h,s,t} \times \text{LOS}_{h,s,t}
+        \]
+      \end{definitionbox}
+      \smallskip
+      \begin{itemize}\scriptsize\setlength{\itemsep}{3pt}
+        \item \textbf{Joint pressure:} combines high occupancy and long
+              stays --- the two mechanisms that together block rapid bed
+              turnover.
+        \item \textbf{Orthogonal to occ:} corr(rigidez, occ) $\approx -0.001$
+              --- adds genuinely independent information.
+        \item \textbf{Cancer relevance:} surgical oncology with high LOS
+              creates system-wide bottlenecks for new referrals.
+        \item \key{DiD role:} \normalfont captures structural inability to
+              absorb demand shocks; high-rigidez hospitals impose the
+              sharpest access barriers.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.51\textwidth}
+      \includegraphics[width=\linewidth]{../scripts/R/_outputs/fig_rigidez_trends.pdf}
+      {\scriptsize\color{neutral}
+        COVID spike from rising LOS; higher in Group 2 (ICU).
+        Post-COVID partial recovery.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% =============================================================================
+\transitionslide{5.\ Intensity over Capacity}
+% =============================================================================
+
+% ── ici ──────────────────────────────────────────────────────────────────────
+\begin{frame}[shrink=8]{\texttt{ici} --- Intensity over Installed Capacity}
+  \begin{columns}[T]
+    \begin{column}{0.45\textwidth}
+      \begin{definitionbox}{Definition}
+        \[
+          \text{ICI}_{h,s,t}
+            = \frac{\text{D\'ias Cama Ocupados}_{h,s,t}}
+                   {D^{\text{dot}}_{h,s,a(t)}}
+        \]
+      \end{definitionbox}
+      \smallskip
+      \begin{itemize}\scriptsize\setlength{\itemsep}{3pt}
+        \item \textbf{Denominator:} installed beds ($D^{\text{dot}}$) not
+              operational --- captures pressure on the full physical endowment.
+        \item \textbf{Identity:} $\text{ICI} = \text{Occ}\times(1-\text{BCE})$;
+              discounts occupancy by the inactive-bed fraction.
+        \item \textbf{Near 1:} at or above the installed ceiling ---
+              full structural utilisation.
+        \item \key{vs.\ occ:} \normalfont ICI uses installed beds; occ uses
+              operational. Together they triangulate both layers of the
+              capacity constraint.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.51\textwidth}
+      \includegraphics[width=\linewidth]{../scripts/R/_outputs/fig_ici_trends.pdf}
+      {\scriptsize\color{neutral}
+        Parallels occ but lower --- systematic gap between installed and
+        operational beds. COVID drop more pronounced: installed roster
+        held while occupied days fell sharply.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% =============================================================================
+% Summary
+% =============================================================================
+
+% ── Correlation matrix ────────────────────────────────────────────────────────
+\begin{frame}{Pairwise Correlations (Group 1, all periods)}
+  \begin{center}\scriptsize
+    \begin{tabular}{lrrrrrrrrr}
+      \toprule
+        & occ & sp6m & zocc & los & rot & rig. & brecha & bce & ici \\
+      \midrule
+      occ     & 1.000 & 0.446 & 0.219 &$-$.001& 0.379 &$-$.001&$-$.054& 0.004 & 0.262 \\
+      sp6m    & 0.446 & 1.000 & 0.149 &$-$.008& 0.055 &$-$.001&$-$.121& 0.002 & 0.185 \\
+      zocc    & 0.219 & 0.149 & 1.000 &$-$.004& 0.022 & 0.002 & 0.063 & 0.022 & 0.069 \\
+      los     &$-$.001&$-$.008&$-$.004& 1.000 &$-$.013& 0.000 & 0.000 &$-$.018& 0.010 \\
+      rot     & 0.379 & 0.055 & 0.022 &$-$.013& 1.000 &$-$.005& 0.014 & 0.026 &$-$.009\\
+      rig.    &$-$.001&$-$.001& 0.002 & 0.000 &$-$.005& 1.000 & 0.002 & 0.002 &$-$.003\\
+      brecha  &$-$.054&$-$.121& 0.063 & 0.000 & 0.014 & 0.002 & 1.000 & 0.394 &$-$.396\\
+      bce     & 0.004 & 0.002 & 0.022 &$-$.018& 0.026 & 0.002 & 0.394 & 1.000 &$-$.933\\
+      ici     & 0.262 & 0.185 & 0.069 & 0.010 &$-$.009&$-$.003&$-$.396&$-$.933& 1.000 \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+  \smallskip
+  \begin{keybox}
+    \scriptsize
+    \key{Key findings:}
+    occ--sp6m ($r=0.45$) moderate --- distinct information.
+    rigidez nearly orthogonal to all occupancy measures ($|r|<0.003$) ---
+    adds independent signal.
+    bce--ici strongly negative ($r=-0.93$) --- algebraic complements.
+  \end{keybox}
+\end{frame}
+
+% ── Data quality ──────────────────────────────────────────────────────────────
+\begin{frame}{Data Quality and Scope Limitations}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \textbf{Known data issues}
+      \begin{itemize}\scriptsize\setlength{\itemsep}{3pt}
+        \item \textbf{Occ outliers ($>$150\,\%):} 68 obs (0.11\,\%), from small rural
+              facilities with $\le6$ reported available bed-days. Recommend excluding
+              $\overline{D}<15$ days/month in sensitivity checks.
+        \item \textbf{Missing dotaci\'on (2.5\,\%):} concentrated in 2014--2015 and
+              2020--2023. Affects brecha\_cap, bce, ici, egr\_x\_cama only;
+              occ, sp\_6m, los unaffected.
+        \item \textbf{z-occ SD = 0.91:} cells with single pre-COVID obs
+              ($\sigma=0$) are excluded from baseline, shrinking the effective pool.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \textbf{Scope limitations}
+      \begin{itemize}\scriptsize\setlength{\itemsep}{3pt}
+        \item \textbf{Public sector only:} SNSS hospitals; private sector excluded.
+        \item \textbf{Service aggregation:} Level 2 sums raw components ---
+              masks service-specific variation.
+        \item \textbf{COVID period:} no adjustment; recommend excluding 2020--2022
+              from main DiD specifications.
+        \item \textbf{Annual dotaci\'on:} intra-year changes not captured.
+      \end{itemize}
+      \smallskip
+      \begin{keybox}
+        \scriptsize
+        \key{Recommendation:} use \texttt{sp\_6m} (Group 1, pre-2020 window)
+        as primary moderator $z_i$; robustness with \texttt{occ} and
+        \texttt{rigidez}.
+      \end{keybox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% =============================================================================
+\end{document}

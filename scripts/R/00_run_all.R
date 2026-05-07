@@ -29,7 +29,8 @@ pipeline <- c(
   "02_clean.R",
   "03_analyze.R",
   "04_tables.R",
-  "05_figures.R"
+  "05_figures.R",
+  "06_indicator_slides.R"
 )
 
 message("Healthcare capacity pipeline — seed ", PROJECT_SEED)

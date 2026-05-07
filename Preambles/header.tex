@@ -145,3 +145,22 @@
   \end{frame}
   \endgroup
 }
+
+% -----------------------------------------------------------------------------
+% Custom box environments (Beamer-only)
+% -----------------------------------------------------------------------------
+\makeatletter
+\@ifclassloaded{beamer}{%
+  % keybox: gold-tinted panel for key results / takeaways
+  \setbeamercolor{keybox-col}{fg=jet, bg=primary-gold!25}
+  \newenvironment{keybox}{%
+    \begin{beamercolorbox}[rounded=true, sep=6pt, wd=\linewidth]{keybox-col}}
+    {\end{beamercolorbox}}
+
+  % definitionbox{Title}: blue block for formal definitions
+  \newenvironment{definitionbox}[1]{%
+    \setbeamercolor{block title}{fg=white, bg=primary-blue}%
+    \setbeamercolor{block body}{fg=jet, bg=light-bg}%
+    \begin{block}{#1}}{\end{block}}
+}{}
+\makeatother
