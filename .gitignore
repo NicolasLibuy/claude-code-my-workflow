@@ -80,8 +80,20 @@ quality_reports/diagnoses/*
 !quality_reports/diagnoses/.gitkeep
 
 # R analysis outputs (generated artifacts; keep scripts, ignore outputs)
-scripts/R/_outputs/
+outputs/
 
 # Output artifacts — uncomment lines below based on your preference
 # *.rds
-# output/**/*.rds
+# outputs/**/*.rds
+
+# Raw MINSAL/DEIS source data (data/) — under collaboration agreement, not for
+# public commit. Keep data/README.md (the manifest) tracked; ignore the actual
+# source files. See data/README.md for the file manifest.
+data/*.xlsx
+data/*.xls
+data/*.doc
+data/*.docx
+data/Documentos/
+
+# Excel lock files (created while a workbook is open)
+~$*.xls*

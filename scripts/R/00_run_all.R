@@ -1,43 +1,26 @@
 # =============================================================================
-# 00_run_all.R — Orchestrator. Run this, not the individual scripts.
+# 00_run_all.R — Pipeline orchestrator
+# Run from repo root: Rscript scripts/R/00_run_all.R
 #
-# Reproducibility contract (enforced by /review-r and /audit-reproducibility):
-#   - Fixed seed set below.
-#   - Project root resolved via here::here() — no setwd().
-#   - Every package loaded under a renv (or DESCRIPTION) lockfile.
-#   - Outputs written to scripts/R/_outputs/ and listed at the end.
-#   - sessionInfo() captured so reviewers can verify the environment.
+# Reproducibility contract:
+#   - Fixed seed set once here; propagated to all scripts via pipeline_env.
+#   - All paths via here::here() — no setwd().
+#   - sessionInfo() written to _outputs/ for environment verification.
 # =============================================================================
 
-# ---- Bootstrap -------------------------------------------------------------
 suppressPackageStartupMessages({
-  if (!requireNamespace("here", quietly = TRUE)) {
+  if (!requireNamespace("here", quietly = TRUE))
     stop("Install 'here' first: install.packages('here')")
-  }
   library(here)
 })
 
-# Seed applies to everything downstream. Change ONLY with a reason in the
-# session log — this is load-bearing for identical numerical outputs.
-PROJECT_SEED <- 20260413L
+PROJECT_SEED <- 20260506L
 set.seed(PROJECT_SEED)
 
-# Output directory (create if missing; treat as ephemeral).
 OUT_DIR <- here("scripts", "R", "_outputs")
 dir.create(OUT_DIR, showWarnings = FALSE, recursive = TRUE)
 
-# ---- Pipeline --------------------------------------------------------------
-# Scripts share state through a single shared environment. Parent is
-# globalenv() so standard R functions (rnorm, ggplot2 exports loaded by the
-# user, etc.) resolve normally. Cross-run contamination is prevented by each
-# script using `exists("varname", inherits = FALSE)` to check ONLY the
-# pipeline env, never the user's global state.
-#
-# 01_load.R produces raw_main; 02_clean.R consumes it and produces df;
-# 03_analyze.R consumes df and writes results.rds; 04 and 05 read from disk.
 pipeline_env <- new.env(parent = globalenv())
-# Propagate the orchestrator's seed + OUT_DIR into the shared env so scripts
-# can reference them without re-computing.
 pipeline_env$PROJECT_SEED <- PROJECT_SEED
 pipeline_env$OUT_DIR      <- OUT_DIR
 
@@ -46,34 +29,27 @@ pipeline <- c(
   "02_clean.R",
   "03_analyze.R",
   "04_tables.R",
-  "05_figures.R"
+  "05_figures.R",
+  "06_indicator_slides.R"
 )
 
-message("Running reproducibility pipeline with seed ", PROJECT_SEED, "...")
+message("Healthcare capacity pipeline — seed ", PROJECT_SEED)
 
 timings <- vapply(pipeline, function(script) {
   path <- here("scripts", "R", script)
-  if (!file.exists(path)) {
-    stop("Missing pipeline script: ", path)
-  }
-  start <- Sys.time()
+  if (!file.exists(path)) stop("Missing script: ", path)
+  t0 <- Sys.time()
   source(path, local = pipeline_env)
-  elapsed <- as.numeric(Sys.time() - start, units = "secs")
-  message(sprintf("  %s -> %.2fs", script, elapsed))
+  elapsed <- as.numeric(Sys.time() - t0, units = "secs")
+  message(sprintf("  %s  %.1f s", script, elapsed))
   elapsed
 }, numeric(1))
 
-# ---- Session capture -------------------------------------------------------
-writeLines(
-  capture.output(sessionInfo()),
-  con = file.path(OUT_DIR, "sessionInfo.txt")
-)
+writeLines(capture.output(sessionInfo()),
+           file.path(OUT_DIR, "sessionInfo.txt"))
 
-# ---- Report ----------------------------------------------------------------
 outputs <- list.files(OUT_DIR, full.names = FALSE)
-message("")
-message("Pipeline complete. Total time: ", sprintf("%.2fs", sum(timings)))
-message("Outputs in ", OUT_DIR, ":")
+message("\nComplete. Total: ", sprintf("%.1f s", sum(timings)),
+        " | Outputs in ", OUT_DIR)
 for (f in outputs) message("  - ", f)
-
 invisible(list(timings = timings, outputs = outputs))
