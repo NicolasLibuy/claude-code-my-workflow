@@ -20,6 +20,18 @@ Install Quarto from [quarto.org/docs/get-started](https://quarto.org/docs/get-st
 
 Required by `/extract-tikz`. `brew install pdf2svg` (macOS) / `apt install pdf2svg` (Debian/Ubuntu) / `dnf install pdf2svg` (Fedora).
 
+### `/stata-replication` halts at "stata-mcp not registered"
+
+The Stata pipeline skill needs the [`stata-mcp`](https://github.com/SepineTam/stata-mcp) MCP server. Install once per user:
+
+```bash
+claude mcp add stata-mcp --scope user -- uvx stata-mcp
+```
+
+`uvx` is the `uv` package runner (`brew install uv` if missing). The MCP server requires a local Stata installation — it's a bridge, not a replacement. Once installed, restart your Claude Code session so the MCP server registers.
+
+Verify with `claude mcp list` — `stata-mcp` should appear with status `connected`. The skill also halts if Stata itself is not on `PATH`; the install instructions documented in [`/stata-replication`](.claude/skills/stata-replication/SKILL.md) Phase 0 cover both pre-flight checks.
+
 ### Claude keeps asking permission for every tool
 
 Default permission mode prompts on every `Bash`, `Edit`, `Write`. Two fixes:
@@ -28,6 +40,25 @@ Default permission mode prompts on every `Bash`, `Edit`, `Write`. Two fixes:
 - **Bypass mode** — `claude --permission-mode acceptEdits` (auto-approves edits but still prompts for sensitive ops) or `claude --permission-mode bypassPermissions` (skips prompts entirely — use only on trusted repos).
 
 The template's `.claude/settings.json` pre-approves ~100 common patterns, so even at default most routine work is unattended.
+
+## Models and API
+
+### Sonnet 4 / original Opus 4 retire 2026-06-15
+
+Anthropic retires **Sonnet 4** and the **original Opus 4** on **2026-06-15**. If your environment pins one of these, requests will fail after that date.
+
+Migration checklist:
+
+- **Check `ANTHROPIC_MODEL` env:** `echo $ANTHROPIC_MODEL` — if it's `claude-sonnet-4-*` or `claude-opus-4-*` (without a 4.5/4.6/4.7 suffix), update.
+- **Check `.claude/settings.json` and `.claude/settings.local.json`** for any `model:` override at the project layer.
+- **Check agent frontmatter:** `grep -rn "claude-sonnet-4\b\|claude-opus-4\b" .claude/agents/` — agents that pin to retired models will fall through to inherit, which is usually fine, but worth knowing.
+- **Check CI:** any GitHub Actions or other CI that calls `claude -p` with `--model`.
+
+Recommended replacements: `claude-sonnet-4-6` for Sonnet 4, `claude-opus-4-8` for original Opus 4 (the newest Opus, GA 2026-05-28, same $5/$25 pricing as 4.6/4.7). The 1M-context beta for Sonnet 4.5 / Sonnet 4 retired 2026-04-30 — migrate to Sonnet 4.6 for long-context workflows.
+
+### `/coarse-review` and other `claude -p` skills may bill differently after 2026-06-15
+
+Starting **2026-06-15**, headless subprocess calls (`claude -p`, Agent SDK) on subscription plans draw from a **separate Agent SDK credit pool**, decoupled from interactive credits. Skills affected in this template: `/coarse-review` (every pipeline stage runs as a `claude -p` subprocess). If `/coarse-review` fails after the cutover with a credit-exhaustion error even though your interactive session works, check the Agent SDK credit balance separately. See [Anthropic's release notes](https://platform.claude.com/docs/en/release-notes/overview) for the current credit allocation per plan tier.
 
 ## Compilation / rendering
 
@@ -97,7 +128,7 @@ That's intentional. Host-global config can contain unrelated paths and secrets. 
 
 ### Seeing too many permission prompts?
 
-If `/permission-check` confirms your config is permissive but you're still being prompted, the built-in Claude Code skill **`/less-permission-prompts`** (Apr 2026) scans your transcripts for common read-only Bash and MCP tool calls and proposes a prioritized allowlist for `.claude/settings.json`. Pairs with our `/permission-check`: `permission-check` diagnoses; `less-permission-prompts` remediates.
+If `/permission-check` confirms your config is permissive but you're still being prompted, the built-in Claude Code skill **`/fewer-permission-prompts`** (Apr 2026) scans your transcripts for common read-only Bash and MCP tool calls and proposes a prioritized allowlist for `.claude/settings.json`. Pairs with our `/permission-check`: `permission-check` diagnoses; `fewer-permission-prompts` remediates.
 
 ### Statusline shows `[UNKNOWN]` or blank
 
@@ -110,7 +141,7 @@ This is **not a bug.** Per Anthropic's [permission-modes docs](https://code.clau
 - Directories: `.git`, `.vscode`, `.idea`, `.husky`, `.claude` (carve-outs: `.claude/commands`, `.claude/agents`, `.claude/skills`, `.claude/worktrees` — these *do* auto-approve under bypass).
 - Files: `.gitconfig`, `.gitmodules`, `.bashrc`, `.bash_profile`, `.zshrc`, `.zprofile`, `.profile`, `.ripgreprc`, `.mcp.json`, `.claude.json`.
 
-So edits to `.claude/references/`, `.claude/rules/`, `.claude/hooks/`, `.claude/scripts/` will always prompt under bypass. The only mode that doesn't fire an interactive prompt on protected paths is **auto mode** (Anthropic's Mar 2026 Week 13 release) — protected-path writes route through a classifier model instead. The classifier is still a gate (it can block) — it's just not human-in-the-loop, so you don't get the click-through interruption. Auto mode requires Max / Team / Enterprise / API plan + Sonnet 4.6, Opus 4.6, or Opus 4.7 + Anthropic API provider; toggle visibility in the VSCode mode dropdown by setting `allowDangerouslySkipPermissions: true` in `.vscode/settings.json` and reloading the window.
+So edits to `.claude/references/`, `.claude/rules/`, `.claude/hooks/`, `.claude/scripts/` will always prompt under bypass. The only mode that doesn't fire an interactive prompt on protected paths is **auto mode** (Anthropic's Mar 2026 Week 13 release) — protected-path writes route through a classifier model instead. The classifier is still a gate (it can block) — it's just not human-in-the-loop, so you don't get the click-through interruption. Auto mode requires Team / Enterprise / API plan (rolling out to Max) + Opus 4.6 or later (incl. 4.8) or Sonnet 4.6 + Anthropic API provider; toggle visibility in the VSCode mode dropdown by setting `allowDangerouslySkipPermissions: true` in `.vscode/settings.json` and reloading the window.
 
 If you're stuck on bypass and don't qualify for auto mode, two workarounds:
 
